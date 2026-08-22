@@ -1,20 +1,17 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ArrowDownRight, Check, CircleHelp, RotateCcw } from "lucide-react";
+import { Check, RotateCcw, Sparkles } from "lucide-react";
 import { evaluateNotes, listProfessors, type EvaluationResult, type Professor } from "@/lib/api";
 
-const sections = ["Visão geral", "Calculadora", "Sua jornada"];
-
-function NumberField({ label, value, onChange, optional = false }: { label: string; value: string; onChange: (value: string) => void; optional?: boolean }) {
-  return <div className="field"><label>{label} {optional && "· opcional"}</label><input inputMode="decimal" type="number" min="0" max="10" step="0.1" value={value} onChange={(event) => onChange(event.target.value)} placeholder="0,0" /></div>;
+function NumberField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return <label className="field"><span>{label}</span><input inputMode="decimal" type="number" min="0" max="10" step="0.1" value={value} onChange={(event) => onChange(event.target.value)} placeholder="0,0" /></label>;
 }
 
-function ResultCard({ result }: { result: EvaluationResult }) {
-  const approved = result.status.includes("APROVADO");
-  const failed = result.status.includes("REPROVADO");
-  const badgeClass = approved ? "result-badge" : failed ? "result-badge warning" : "result-badge neutral";
-  return <aside className="panel result-panel"><span className="eyebrow">Leitura do resultado</span><div className="result-title">{Number(result.notaAtual).toFixed(2).replace(".", ",")}</div><p className="result-copy">{result.status}</p>{result.precisaP3 && <p className="result-copy" style={{ marginTop: 12 }}>Adicione a P3 para continuar a avaliação.</p>}{result.precisaExame && <p className="result-copy" style={{ marginTop: 12 }}>Você está elegível para o exame final.</p>}<span className={badgeClass}>{result.status}</span></aside>;
+function statusTone(status: string) {
+  if (status.includes("APROVADO")) return "approved";
+  if (status.includes("REPROVADO")) return "failed";
+  return "attention";
 }
 
 export default function Home() {
@@ -26,16 +23,38 @@ export default function Home() {
   const [result, setResult] = useState<EvaluationResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [activeSection, setActiveSection] = useState("Visão geral");
   const professor = professors[professorIndex];
 
-  useEffect(() => { listProfessors().then((items) => { setProfessors(items); setGrades(items[0]?.rotulosNotasIniciais.map(() => "") ?? []); }).catch(() => setError("Não foi possível carregar os professores. Verifique se a API está disponível.")); }, []);
+  useEffect(() => {
+    listProfessors().then((items) => {
+      setProfessors(items);
+      setGrades(items[0]?.rotulosNotasIniciais.map(() => "") ?? []);
+    }).catch(() => setError("Não foi possível conectar à API."));
+  }, []);
+
   const canEvaluate = useMemo(() => grades.length > 0 && grades.every((grade) => grade !== "" && Number(grade) >= 0 && Number(grade) <= 10), [grades]);
   const updateGrade = (index: number, value: string) => setGrades((current) => current.map((grade, itemIndex) => itemIndex === index ? value : grade));
-  const changeProfessor = (value: number) => { setProfessorIndex(value); setGrades(professors[value]?.rotulosNotasIniciais.map(() => "") ?? []); setP3(""); setExam(""); setResult(null); setError(""); };
-  const submit = async () => { if (!canEvaluate) { setError("Preencha todas as notas iniciais com valores entre 0 e 10."); return; } setLoading(true); setError(""); try { setResult(await evaluateNotes({ indiceProfessor: professorIndex, notasIniciais: grades.map(Number), p3: p3 ? Number(p3) : undefined, exame: exam ? Number(exam) : undefined })); } catch { setError("Não foi possível avaliar agora. Confirme a URL da API e o CORS do servidor."); } finally { setLoading(false); } };
+  const changeProfessor = (value: number) => {
+    setProfessorIndex(value);
+    setGrades(professors[value]?.rotulosNotasIniciais.map(() => "") ?? []);
+    setP3(""); setExam(""); setResult(null); setError("");
+  };
+  const submit = async () => {
+    if (!canEvaluate) { setError("Preencha as notas entre 0 e 10."); return; }
+    setLoading(true); setError("");
+    try {
+      setResult(await evaluateNotes({ indiceProfessor: professorIndex, notasIniciais: grades.map(Number), p3: p3 ? Number(p3) : undefined, exame: exam ? Number(exam) : undefined }));
+    } catch { setError("Não foi possível avaliar. Verifique a conexão com a API."); }
+    finally { setLoading(false); }
+  };
   const reset = () => { setGrades(professor?.rotulosNotasIniciais.map(() => "") ?? []); setP3(""); setExam(""); setResult(null); setError(""); };
-  const goTo = (id: string) => { setActiveSection(id); document.getElementById(id.toLowerCase().replaceAll(" ", "-"))?.scrollIntoView({ behavior: "smooth" }); };
 
-  return <div className="app-shell"><aside className="sidebar"><a className="brand" href="#visão-geral"><span className="brand-mark" /><span><strong>Notas ALP</strong><small>clareza para decidir</small></span></a><div className="side-title">Índice de uso</div><nav className="nav">{sections.map((section, index) => <button key={section} className={activeSection === section ? "active" : ""} onClick={() => goTo(section)}><span>0{index + 1}</span>{section}</button>)}</nav><div className="side-note"><strong>Uma média por vez.</strong>Preencha suas notas e entenda o caminho acadêmico sem cálculos escondidos.</div></aside><main className="main"><header className="topbar"><span>Notas ALP <span style={{ color: "var(--line)" }}>›</span> painel de estudo</span><span className="topbar-right"><span><i className="status-dot" /> API conectada</span><span>v. 02 / 2026</span></span></header><div className="content"><section className="hero" id="visão-geral"><div><span className="eyebrow">01 · ponto de partida</span><h1>Suas notas não são um <em>mistério.</em></h1><p className="lede">Uma calculadora acadêmica que mostra a média, explica a regra e aponta o próximo passo — com transparência em cada etapa.</p><div className="hero-actions"><button className="button" onClick={() => goTo("Calculadora")}>Calcular minha média <ArrowDownRight size={15} /></button><button className="button secondary" onClick={() => goTo("Sua jornada")}>Como funciona?</button></div></div><div className="hero-art"><div className="art-card"><strong>Entenda o caminho.</strong><p>Da média inicial ao exame final, cada decisão aparece no momento certo.</p></div></div></section><div className="stats"><div className="stat"><strong>{professors.length || "—"}</strong><span>professores disponíveis</span></div><div className="stat"><strong>06,0</strong><span>média de aprovação</span></div><div className="stat"><strong>REST</strong><span>API Spring Boot</span></div></div><section className="section" id="calculadora"><div className="section-heading"><div><span className="eyebrow">02 · cálculo aberto</span><h2>Faça a conta, <em>sem ruído.</em></h2></div><p>As regras são processadas pela API oficial do projeto. O cliente apenas organiza seus dados e torna cada decisão legível.</p></div><div className="calculator"><div className="panel"><div className="panel-heading"><div><span className="eyebrow">Dados da disciplina</span><h3>Notas do semestre</h3><p>{professor ? `${professor.nomeProfessor} · ${professor.nomeMateria}` : "Carregando professores..."}</p></div><select className="select" value={professorIndex} onChange={(event) => changeProfessor(Number(event.target.value))} disabled={!professors.length}>{professors.map((item) => <option key={item.indice} value={item.indice}>{item.nomeProfessor} · {item.nomeMateria}</option>)}</select></div><div className="fields">{professor?.rotulosNotasIniciais.map((label, index) => <NumberField key={label} label={label} value={grades[index] ?? ""} onChange={(value) => updateGrade(index, value)} />)}</div>{result?.precisaP3 && <div className="fields"><NumberField label="Prova 3 · P3" value={p3} onChange={setP3} /></div>}{result?.precisaExame && <div className="fields"><NumberField label="Exame final" value={exam} onChange={setExam} /></div>}<p className="helper"><CircleHelp size={14} style={{ verticalAlign: "-3px", marginRight: 5 }} /> A API decide quando P3 ou exame são necessários.</p>{error && <p className="helper" style={{ color: "var(--accent)" }}>{error}</p>}<button className="button calculate" onClick={submit} disabled={loading}>{loading ? "Avaliando..." : "Ver minha situação"} <Check size={15} /></button></div>{result ? <ResultCard result={result} /> : <aside className="panel result-panel"><span className="eyebrow">Leitura do resultado</span><div className="result-title">—</div><p className="result-copy">Preencha suas notas e consulte a API para descobrir o próximo passo.</p><span className="result-badge neutral">AGUARDANDO DADOS</span></aside>}</div></section><section className="section" id="sua-jornada"><div className="section-heading"><div><span className="eyebrow">03 · sua jornada</span><h2>O que acontece <em>depois?</em></h2></div><button className="button secondary" onClick={reset}><RotateCcw size={14} /> Limpar cálculo</button></div><div className="timeline"><div className="step current"><span className="step-number">01 / média inicial</span><h3>Comece pelo básico.</h3><p>Selecione o professor e envie todas as notas iniciais para a API.</p></div><div className="step"><span className="step-number">02 / recuperação</span><h3>P3, se precisar.</h3><p>Quando a resposta indicar `precisaP3`, o campo aparece sem interromper seu fluxo.</p></div><div className="step"><span className="step-number">03 / decisão</span><h3>Exame final.</h3><p>A elegibilidade chega no mesmo contrato e orienta a próxima entrada.</p></div></div></section><footer className="footer"><span>Notas ALP · cliente web</span><span>Spring Boot REST API · Vercel ready</span></footer></div></main></div>;
+  return <main className="minimal-shell">
+    <header className="header"><a className="brand" href="/"><span className="brand-mark" /><span><strong>Notas ALP</strong><small>calculadora acadêmica</small></span></a><div className="header-status"><i className="status-dot" /> API Spring Boot</div></header>
+    <section className="intro"><div><span className="eyebrow">cálculo de notas</span><h1>Saiba onde você está.</h1></div><p>Preencha. Avalie. Siga.</p></section>
+    <section className="stats"><div><strong>{professors.length || "—"}</strong><span>professores</span></div><div><strong>06,0</strong><span>média mínima</span></div><div><strong>REST</strong><span>API oficial</span></div></section>
+    <section className="workspace"><div className="calculator-card"><div className="card-top"><div><span className="eyebrow">01 · notas</span><h2>Seu semestre</h2></div><select value={professorIndex} onChange={(event) => changeProfessor(Number(event.target.value))} disabled={!professors.length}>{professors.map((item) => <option key={item.indice} value={item.indice}>{item.nomeProfessor} · {item.nomeMateria}</option>)}</select></div><p className="course-name">{professor?.nomeMateria ?? "Carregando disciplinas..."}</p><div className="fields">{professor?.rotulosNotasIniciais.map((label, index) => <NumberField key={`${label}-${index}`} label={label} value={grades[index] ?? ""} onChange={(value) => updateGrade(index, value)} />)}</div>{result?.precisaP3 && <div className="extra-fields"><NumberField label="P3" value={p3} onChange={setP3} /></div>}{result?.precisaExame && <div className="extra-fields"><NumberField label="Exame final" value={exam} onChange={setExam} /></div>}{error && <p className="error">{error}</p>}<div className="actions"><button className="primary-button" onClick={submit} disabled={loading}>{loading ? "Avaliando…" : "Calcular média"} <Check size={16} /></button><button className="reset-button" onClick={reset} aria-label="Limpar notas"><RotateCcw size={15} /></button></div></div>
+      <aside className={`result-card ${result ? statusTone(result.status) : "empty"}`}><div className="result-label"><Sparkles size={14} /> resultado</div>{result ? <><strong className="result-value">{Number(result.notaAtual).toFixed(2).replace(".", ",")}</strong><span className="result-status">{result.status}</span>{result.precisaP3 && <p>Informe a P3 para continuar.</p>}{result.precisaExame && <p>Informe o exame final para concluir.</p>}</> : <><strong className="result-placeholder">—</strong><span className="result-status">Aguardando notas</span><p>Sua média aparece aqui.</p></>}</aside></section>
+    <footer><span>Notas ALP</span><span>{professors.length ? `${professors.length} opções disponíveis` : "Conectando…"}</span></footer>
+  </main>;
 }
