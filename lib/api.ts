@@ -40,9 +40,9 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export function listProfessors() {
-  return request<Professor[]>("/api/notas/professores");
+  return request<Professor[]>("/api/professores");
 }
 
 export function evaluateNotes(payload: EvaluationRequest) {
-  return request<EvaluationResult>("/api/notas/avaliar", { method: "POST", body: JSON.stringify(payload) });
+  return request<EvaluationResult>("/api/avaliar", { method: "POST", body: JSON.stringify(payload) });
 }
