@@ -57,6 +57,7 @@ select { min-width:180px; max-width:250px; padding:11px 12px; border:1px solid v
 .result-card p { margin:auto 0 0; color:rgba(255,255,255,.76); font-size:12px; line-height:1.5; }
 .next-grade { margin-top:18px !important; padding-top:14px; border-top:1px solid rgba(255,255,255,.22); }
 .next-grade strong { color:var(--yellow); font-weight:700; }
+.next-grade.unreachable strong { color:#ffd0c8; }
 footer { display:flex; justify-content:space-between; margin-top:auto; padding-top:55px; color:var(--ink-soft); font:9px 'DM Mono',monospace; letter-spacing:.08em; text-transform:uppercase; }
 @media (max-width:760px) { .minimal-shell{width:min(100% - 32px,560px);padding-top:20px}.intro{margin-top:72px;display:block}.intro p{margin-top:14px}.workspace{grid-template-columns:1fr;margin-top:34px}.result-card{min-height:220px}.result-value,.result-placeholder{margin-top:42px}.extra-fields{max-width:100%} }
 @media (max-width:520px) { .header-status{font-size:0}.header-status .status-dot{margin:0}.stats > div,.stats > div:not(:first-child){padding:13px 8px 12px 0}.stats > div:not(:first-child){padding-left:8px}.stats strong{font-size:21px}.stats span{font-size:8px}.calculator-card,.result-card{padding:21px}.card-top{display:block}.card-top select{width:100%;max-width:none;margin-top:18px}.fields{grid-template-columns:1fr 1fr}.fields .field:last-child:nth-child(3){grid-column:1/-1}footer{flex-direction:column;gap:8px;padding-top:35px} }
