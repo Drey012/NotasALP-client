@@ -49,6 +49,7 @@ select { min-width:180px; max-width:250px; padding:11px 12px; border:1px solid v
 .primary-button,.reset-button { min-height:44px; border:1px solid var(--ink); transition:transform .16s ease,background .16s ease; }
 .primary-button { flex:1; display:flex; align-items:center; justify-content:center; gap:9px; background:var(--ink); color:var(--white); font-size:13px; font-weight:700; }
 .primary-button:hover { background:#273a5e; transform:translateY(-1px); }
+.primary-button:focus { box-shadow:0 0 0 3px rgba(22,35,59,.13); scale:1.01; transition:scale .16s ease-in-out; }
 .primary-button:active,.reset-button:active { transform:scale(.97); }
 .reset-button { width:44px; display:grid; place-items:center; background:transparent; color:var(--ink); }
 .reset-button:hover { background:var(--paper); }

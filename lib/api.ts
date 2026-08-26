@@ -18,7 +18,9 @@ export type EvaluationResult = {
   precisaP3: boolean;
   precisaExame: boolean;
   notaNecessariaProximaProva: number | null;
+  proximaProvaLabel?: string | null;
 };
+
 
 export type ApiError = Error & {
   status?: number;

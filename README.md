@@ -4,7 +4,7 @@ Cliente web em Next.js para a API REST do repositório [`Drey012/NotasALP`](http
 
 ## Stack
 
-Next.js 15, React 19, TypeScript e CSS responsivo com uma direção editorial em marfim, azul profundo, coral e verde. O cliente não replica as regras de negócio: ele carrega os professores em `GET /api/notas/professores` e envia as notas para `POST /api/notas/avaliar`.
+Next.js 15, React 19, TypeScript e CSS responsivo com uma direção editorial em marfim, azul profundo, coral e verde. O cliente não replica as regras de negócio: ele carrega os professores em `GET /api/professores` e envia as notas preenchidas para `POST /api/avaliar`.
 
 ## Executar localmente
 
@@ -33,8 +33,9 @@ Na Vercel, importe `Drey012/NotasALP-client`, selecione Next.js e mantenha a rai
 
 A tela usa o retorno real da API:
 
-- `GET /api/notas/professores`: lista `indice`, `nomeProfessor`, `nomeMateria` e `rotulosNotasIniciais`.
-- `POST /api/notas/avaliar`: recebe `indiceProfessor`, `notasIniciais`, e opcionalmente `p3` e `exame`.
-- A resposta usa `notaAtual`, `status`, `precisaP3` e `precisaExame`.
+- `GET /api/professores`: lista `indice`, `nomeProfessor`, `nomeMateria` e `rotulosNotasIniciais`.
+- `POST /api/avaliar`: recebe `indiceProfessor`, `notasIniciais` (suporta notas parciais preenchidas), e opcionalmente `p3` e `exame`.
+- A resposta usa `notaAtual`, `status`, `precisaP3`, `precisaExame`, `notaNecessariaProximaProva` e `proximaProvaLabel`.
 
-O fluxo é progressivo: P3 e exame só aparecem quando a resposta da API sinaliza que são necessários. Erros de conexão, dados incompletos e estado de carregamento são exibidos na interface.
+O fluxo é progressivo e flexível: permite enviar notas parciais para calcular a nota mínima necessária na próxima avaliação (P2, P3, etc.). P3 e exame só aparecem quando a resposta da API sinaliza que são necessários.
+
