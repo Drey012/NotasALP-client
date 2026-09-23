@@ -702,3 +702,142 @@ button {
     margin-bottom: 5px;
   }
 }
+
+/* CRUD management */
+.crud-stack {
+  display: grid;
+  gap: 18px;
+}
+.records-panel {
+  padding-top: 23px;
+}
+.records-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 18px;
+}
+.records-heading h3 {
+  margin: 8px 0 0;
+  font:
+    500 24px "Playfair Display",
+    serif;
+}
+.records-list {
+  display: grid;
+  gap: 8px;
+  max-height: 390px;
+  overflow-y: auto;
+  padding-right: 3px;
+}
+.record-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  border: 1px solid var(--line);
+  background: #fff;
+  padding: 13px 14px;
+  transition:
+    border-color 0.16s ease,
+    background 0.16s ease;
+}
+.record-row:hover,
+.record-row.editing {
+  border-color: var(--blue);
+  background: #f4f7f5;
+}
+.record-copy {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 9px;
+  align-items: baseline;
+}
+.record-copy strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+}
+.record-copy small {
+  grid-column: 2;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--soft);
+  font-size: 11px;
+  margin-top: 4px;
+}
+.record-id {
+  color: var(--coral);
+  font:
+    10px "DM Mono",
+    monospace;
+}
+.record-actions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 5px;
+}
+.icon-button.danger:hover {
+  color: #a53f32;
+  border-color: #d8a39a;
+  background: #fff4f1;
+}
+.creation-form .field {
+  margin-bottom: 17px;
+}
+.creation-form select:disabled {
+  color: var(--soft);
+  background: #f0efeb;
+  cursor: not-allowed;
+}
+.notice {
+  border: 1px solid var(--line);
+  padding: 10px 12px;
+  margin-top: 18px;
+  background: #f4f2ed;
+}
+.notice.success {
+  border-color: #b5d0c0;
+  background: #eef7f0;
+}
+.notice.error {
+  border-color: #e2b5aa;
+  background: #fff5f2;
+}
+.notice .feedback {
+  margin: 0;
+}
+.notice ul {
+  margin: 8px 0 0 22px;
+  padding: 0;
+  color: var(--coral);
+  font-size: 11px;
+  line-height: 1.55;
+  white-space: pre-line;
+}
+.spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (max-width: 850px) {
+  .records-list {
+    max-height: none;
+  }
+}
+@media (max-width: 560px) {
+  .record-copy strong {
+    max-width: 150px;
+  }
+  .record-actions .icon-button {
+    padding: 9px;
+  }
+}

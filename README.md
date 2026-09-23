@@ -1,49 +1,58 @@
 # NotasALP Client
 
-Cliente web em Next.js para a API REST do repositório [`Drey012/NotasALP`](https://github.com/Drey012/NotasALP). Esta versão organiza o produto em duas áreas principais: **Consulta** e **Cadastro**.
+Cliente web em Next.js para a API REST do repositório [`Drey012/NotasALP`](https://github.com/Drey012/NotasALP). A interface organiza o sistema em duas áreas: **Consultar dados** e **Criar registros**.
 
 ## Arquitetura
 
-A página principal atua somente como shell de navegação. As responsabilidades foram separadas em componentes e serviços:
+A página principal funciona como shell de navegação. As responsabilidades estão separadas entre componentes visuais e o serviço HTTP:
 
-| Arquivo                          | Responsabilidade                                                      |
-| -------------------------------- | --------------------------------------------------------------------- |
-| `app/page.tsx`                   | Shell visual, navegação entre as áreas e métricas gerais.             |
-| `components/ConsultationTab.tsx` | Consulta de atribuições, avaliação de notas e leitura dos resultados. |
-| `components/CreationTab.tsx`     | Formulários administrativos para toda a estrutura acadêmica.          |
-| `components/ui.tsx`              | Campos, métricas e mensagens reutilizáveis.                           |
-| `lib/api.ts`                     | Tipos TypeScript e chamadas HTTP para o backend.                      |
-| `app/globals.css`                | Identidade visual, layout responsivo e estados dos componentes.       |
+| Arquivo                          | Responsabilidade                                                              |
+| -------------------------------- | ----------------------------------------------------------------------------- |
+| `app/page.tsx`                   | Shell visual, navegação entre consulta e administração.                       |
+| `components/ConsultationTab.tsx` | Consulta de atribuições, avaliação de notas e leitura de resultados.          |
+| `components/CreationTab.tsx`     | Listagem, criação, atualização e exclusão dos cinco recursos administrativos. |
+| `components/ui.tsx`              | Campos, métricas e feedbacks reutilizáveis.                                   |
+| `lib/api.ts`                     | Tipos TypeScript, chamadas HTTP CRUD e `ApiError`.                            |
+| `app/globals.css`                | Identidade visual, layout responsivo e estados dos componentes.               |
 
-A lógica de cálculo não é duplicada no cliente: a avaliação é sempre delegada ao motor de regras da API.
+As regras de avaliação continuam centralizadas no backend. O cliente apenas coleta as notas, chama a API e apresenta o resultado.
 
-## Abas e contratos consumidos
+## Operações administrativas
 
-### Consulta
+Cada seção da aba **Criar registros** possui formulário de criação e uma lista dos registros existentes com ações de edição e exclusão. Exclusões exigem confirmação local antes do envio e, quando retornam `204 No Content`, a lista é atualizada automaticamente.
 
-A aba **Consultar dados** carrega as atribuições para o formulário de notas com `GET /api/professores` e envia os dados preenchidos para `POST /api/avaliar`. Os campos de P3 e exame aparecem progressivamente conforme `precisaP3` e `precisaExame` na resposta.
+| Recurso     | Listagem                           | Criação                       | Atualização                       | Exclusão                             |
+| ----------- | ---------------------------------- | ----------------------------- | --------------------------------- | ------------------------------------ |
+| Cursos      | `GET /api/cursos`                  | `POST /api/admin/cursos`      | `PUT /api/admin/cursos/{id}`      | `DELETE /api/admin/cursos/{id}`      |
+| Professores | `GET /api/professores-cadastrados` | `POST /api/admin/professores` | `PUT /api/admin/professores/{id}` | `DELETE /api/admin/professores/{id}` |
+| Semestres   | `GET /api/semestres`               | `POST /api/admin/semestres`   | `PUT /api/admin/semestres/{id}`   | `DELETE /api/admin/semestres/{id}`   |
+| Matérias    | `GET /api/materias`                | `POST /api/admin/materias`    | `PUT /api/admin/materias/{id}`    | `DELETE /api/admin/materias/{id}`    |
+| Atribuições | `GET /api/atribuicoes`             | `POST /api/admin/atribuicoes` | `PUT /api/admin/atribuicoes/{id}` | `DELETE /api/admin/atribuicoes/{id}` |
 
-Também existe um catálogo de atribuições, carregado com `GET /api/atribuicoes`, para consulta rápida de professor, matéria e turno.
+A ordem recomendada para criação é **cursos → professores → semestres → matérias → atribuições**, respeitando as relações entre os dados. Durante edições, os IDs relacionados são selecionados novamente quando o Response DTO fornece apenas os nomes relacionados.
 
-### Cadastro
+## Tratamento de erros
 
-A aba **Criar registros** contém um formulário por tipo de entidade e respeita a ordem recomendada pelo backend:
+O wrapper de `lib/api.ts` interpreta o contrato `ErroRespostaDTO` do backend e lança `ApiError` com:
 
-1. Curso — `POST /api/admin/cursos`
-2. Professor — `POST /api/admin/professores`
-3. Semestre — `POST /api/admin/semestres`
-4. Matéria — `POST /api/admin/materias`
-5. Atribuição — `POST /api/admin/atribuicoes`
+- `status`: código HTTP retornado;
+- `message`: campo `mensagem` da API;
+- `details`: lista `detalhes` das falhas de validação.
 
-Os registros auxiliares são consultados para preencher os relacionamentos dos formulários:
+A interface apresenta mensagens contextualizadas para os principais cenários:
 
-- `GET /api/cursos`
-- `GET /api/professores-cadastrados`
-- `GET /api/semestres`
-- `GET /api/materias`
-- `GET /api/atribuicoes`
+| Status | Apresentação no frontend                                        |
+| ------ | --------------------------------------------------------------- |
+| `400`  | “Dados inválidos” e, quando disponíveis, os detalhes por campo. |
+| `404`  | “Não encontrado” com a mensagem enviada pelo backend.           |
+| `409`  | “Conflito”, especialmente para exclusões com dados vinculados.  |
+| `500`  | “Erro do servidor” com a orientação retornada pela API.         |
 
-A atribuição valida o campo `jsonFormula` antes do envio para evitar cadastrar JSON inválido no backend.
+Falhas locais de JSON na fórmula de uma atribuição também são detectadas antes do envio.
+
+## Consulta acadêmica
+
+A aba **Consultar dados** carrega as opções com `GET /api/professores`, envia notas para `POST /api/avaliar` e exibe P3 ou exame final apenas quando a resposta indicar `precisaP3` ou `precisaExame`. O catálogo de atribuições usa `GET /api/atribuicoes`.
 
 ## Executar localmente
 
@@ -57,8 +66,6 @@ A aplicação abre em `http://localhost:3000`. Por padrão, o cliente procura a 
 
 ## Variáveis de ambiente
 
-`NEXT_PUBLIC_API_URL` define a URL base do backend:
-
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:8080
 ```
@@ -70,4 +77,4 @@ pnpm typecheck
 pnpm build
 ```
 
-O cliente espera que o backend esteja executando a branch `feature/Add-Data` ou outra versão que exponha os mesmos contratos. Nenhum arquivo ou alteração foi feito no repositório do backend durante esta remodelação.
+O cliente espera que o backend esteja executando uma versão com os contratos CRUD e `GlobalExceptionHandler` descritos no README mais recente da branch `feature/Add-Data`. Nenhum arquivo ou alteração é feito no repositório do backend por este projeto.
