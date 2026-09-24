@@ -408,6 +408,7 @@ function FormFields({
           <Field
             label="Nome do curso"
             required
+            maxLength={100}
             value={values.nome}
             onChange={(value) => set("nome", value)}
             placeholder="Desenvolvimento de Software"
@@ -415,7 +416,7 @@ function FormFields({
           <Field
             label="Sigla"
             required
-            maxLength={10}
+            maxLength={20}
             value={values.sigla}
             onChange={(value) => set("sigla", value)}
             placeholder="DSM"
@@ -427,6 +428,7 @@ function FormFields({
           <Field
             label="Nome completo"
             required
+            maxLength={100}
             value={values.nome}
             onChange={(value) => set("nome", value)}
             placeholder="Profº Exemplo"
@@ -435,6 +437,7 @@ function FormFields({
             label="E-mail institucional"
             required
             type="email"
+            maxLength={100}
             value={values.email}
             onChange={(value) => set("email", value)}
             placeholder="exemplo@cps.sp.gov.br"
@@ -447,6 +450,7 @@ function FormFields({
             label="Ordem do semestre"
             required
             min="1"
+            max="8"
             type="number"
             value={values.ordem}
             onChange={(value) => set("ordem", value)}
@@ -469,6 +473,7 @@ function FormFields({
           <Field
             label="Nome da matéria"
             required
+            maxLength={100}
             value={values.nome}
             onChange={(value) => set("nome", value)}
             placeholder="Algoritmo e Lógica de Programação"
@@ -476,6 +481,7 @@ function FormFields({
           <Field
             label="Sigla"
             required
+            maxLength={10}
             value={values.sigla}
             onChange={(value) => set("sigla", value)}
             placeholder="ALP"
@@ -551,6 +557,7 @@ function Field({
   type = "text",
   required = false,
   min,
+  max,
   maxLength,
 }: {
   label: string;
@@ -560,6 +567,7 @@ function Field({
   type?: string;
   required?: boolean;
   min?: string;
+  max?: string;
   maxLength?: number;
 }) {
   return (
@@ -568,6 +576,7 @@ function Field({
       <input
         required={required}
         min={min}
+        max={max}
         maxLength={maxLength}
         type={type}
         value={value ?? ""}
