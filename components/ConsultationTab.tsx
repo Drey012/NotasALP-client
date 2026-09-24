@@ -72,17 +72,24 @@ export function ConsultationTab({ onCountChange }: ConsultationTabProps) {
   };
 
   const submit = async () => {
-    if (!professor || grades.some((grade) => grade.trim() === "")) {
-      setError("Preencha todas as notas iniciais antes de consultar.");
+    const requiredGrades = grades.slice(0, -1);
+    const hasMissingRequiredGrade = requiredGrades.some(
+      (grade) => grade.trim() === "",
+    );
+
+    if (!professor || hasMissingRequiredGrade) {
+      setError("Preencha as notas iniciais antes de consultar.");
       return;
     }
+    const notesToEvaluate =
+      grades[grades.length - 1]?.trim() === "" ? grades.slice(0, -1) : grades;
     setSubmitting(true);
     setError("");
     try {
       setResult(
         await evaluateNotes({
           indiceProfessor: professor.indice,
-          notasIniciais: grades.map(Number),
+          notasIniciais: notesToEvaluate.map(Number),
           p3: p3 === "" ? undefined : Number(p3),
           exame: exam === "" ? undefined : Number(exam),
         }),
@@ -188,7 +195,8 @@ export function ConsultationTab({ onCountChange }: ConsultationTabProps) {
                   </div>
                 )}
                 <p className="helper">
-                  A API decide quando P3 ou exame são necessários.
+                  A última nota inicial é opcional para calcular quanto você
+                  precisa nela. A API decide quando P3 ou exame são necessários.
                 </p>
                 <div className="actions">
                   <button
