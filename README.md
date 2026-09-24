@@ -1,58 +1,53 @@
 # NotasALP Client
 
-Cliente web em Next.js para a API REST do repositório [`Drey012/NotasALP`](https://github.com/Drey012/NotasALP). A interface organiza o sistema em duas áreas: **Consultar dados** e **Criar registros**.
+Cliente web em Next.js para a API REST do repositório [`Drey012/NotasALP`](https://github.com/Drey012/NotasALP). A interface mantém a consulta acadêmica pública e protege o gerenciamento administrativo com autenticação JWT.
 
-## Arquitetura
+## Fluxo de autenticação
 
-A página principal funciona como shell de navegação. As responsabilidades estão separadas entre componentes visuais e o serviço HTTP:
+A área **Consultar dados** continua disponível sem login, pois o backend permite as rotas públicas de consulta e avaliação. A área **Área administrativa** abre a tela de autenticação quando não existe uma sessão local válida.
 
-| Arquivo                          | Responsabilidade                                                              |
-| -------------------------------- | ----------------------------------------------------------------------------- |
-| `app/page.tsx`                   | Shell visual, navegação entre consulta e administração.                       |
-| `components/ConsultationTab.tsx` | Consulta de atribuições, avaliação de notas e leitura de resultados.          |
-| `components/CreationTab.tsx`     | Listagem, criação, atualização e exclusão dos cinco recursos administrativos. |
-| `components/ui.tsx`              | Campos, métricas e feedbacks reutilizáveis.                                   |
-| `lib/api.ts`                     | Tipos TypeScript, chamadas HTTP CRUD e `ApiError`.                            |
-| `app/globals.css`                | Identidade visual, layout responsivo e estados dos componentes.               |
+A tela de acesso possui dois fluxos:
 
-As regras de avaliação continuam centralizadas no backend. O cliente apenas coleta as notas, chama a API e apresenta o resultado.
+- **Registro:** envia `POST /api/auth/registrar` com `nome`, `email` e `senha` de pelo menos seis caracteres. O backend cria o administrador e retorna o token JWT.
+- **Login:** envia `POST /api/auth/login` com `email` e `senha`.
 
-## Operações administrativas
+Ambos os endpoints retornam `token`, `tipo`, `email` e `nome`. Após sucesso, a sessão é salva no `localStorage` sob a chave `notasalp.auth.session` e o usuário entra diretamente na área administrativa.
 
-Cada seção da aba **Criar registros** possui formulário de criação e uma lista dos registros existentes com ações de edição e exclusão. Exclusões exigem confirmação local antes do envio e, quando retornam `204 No Content`, a lista é atualizada automaticamente.
+## Sessão e autorização
 
-| Recurso     | Listagem                           | Criação                       | Atualização                       | Exclusão                             |
-| ----------- | ---------------------------------- | ----------------------------- | --------------------------------- | ------------------------------------ |
-| Cursos      | `GET /api/cursos`                  | `POST /api/admin/cursos`      | `PUT /api/admin/cursos/{id}`      | `DELETE /api/admin/cursos/{id}`      |
-| Professores | `GET /api/professores-cadastrados` | `POST /api/admin/professores` | `PUT /api/admin/professores/{id}` | `DELETE /api/admin/professores/{id}` |
-| Semestres   | `GET /api/semestres`               | `POST /api/admin/semestres`   | `PUT /api/admin/semestres/{id}`   | `DELETE /api/admin/semestres/{id}`   |
-| Matérias    | `GET /api/materias`                | `POST /api/admin/materias`    | `PUT /api/admin/materias/{id}`    | `DELETE /api/admin/materias/{id}`    |
-| Atribuições | `GET /api/atribuicoes`             | `POST /api/admin/atribuicoes` | `PUT /api/admin/atribuicoes/{id}` | `DELETE /api/admin/atribuicoes/{id}` |
+`lib/api.ts` injeta automaticamente `Authorization: Bearer <token>` nas requisições quando existe uma sessão. Isso permite que as operações administrativas de CRUD funcionem sem que cada componente precise lidar diretamente com o cabeçalho.
 
-A ordem recomendada para criação é **cursos → professores → semestres → matérias → atribuições**, respeitando as relações entre os dados. Durante edições, os IDs relacionados são selecionados novamente quando o Response DTO fornece apenas os nomes relacionados.
+Quando uma requisição protegida retorna `401`, o cliente remove a sessão, notifica o shell da aplicação e retorna o usuário à aba pública de consulta com a mensagem **“Sessão expirada. Faça login novamente.”** O logout manual remove o token e os dados da sessão do navegador.
+
+A sessão é armazenada apenas no navegador atual. O frontend não tenta interpretar o conteúdo do JWT; a validade do token permanece responsabilidade do filtro JWT e do Spring Security.
+
+## Contratos consumidos
+
+| Área                | Método                         | Endpoint                                                    |
+| ------------------- | ------------------------------ | ----------------------------------------------------------- |
+| Registro            | `POST`                         | `/api/auth/registrar`                                       |
+| Login               | `POST`                         | `/api/auth/login`                                           |
+| Consulta de notas   | `GET` / `POST`                 | `/api/professores`, `/api/avaliar`                          |
+| CRUD administrativo | `GET`, `POST`, `PUT`, `DELETE` | `/api/cursos`, `/api/admin/cursos`, e recursos equivalentes |
+
+As operações administrativas continuam organizadas em `components/CreationTab.tsx`, com suporte a criação, edição, exclusão e feedbacks detalhados.
 
 ## Tratamento de erros
 
-O wrapper de `lib/api.ts` interpreta o contrato `ErroRespostaDTO` do backend e lança `ApiError` com:
+O cliente interpreta o contrato padronizado do backend através de `ApiError`, preservando `status`, `mensagem` e a lista `detalhes` de validação. A tela de autenticação exibe os detalhes retornados para erros `400`, como e-mail inválido, nome ausente ou senha curta, além de mensagens de regra de negócio como **“O e-mail informado já está em uso.”** e **“Credenciais inválidas.”**
 
-- `status`: código HTTP retornado;
-- `message`: campo `mensagem` da API;
-- `details`: lista `detalhes` das falhas de validação.
+Os demais erros são apresentados de acordo com o status: `401` encerra a sessão, `404` indica recurso não encontrado, `409` informa conflito de integridade e `500` exibe o erro interno retornado pelo servidor.
 
-A interface apresenta mensagens contextualizadas para os principais cenários:
+## Arquitetura
 
-| Status | Apresentação no frontend                                        |
-| ------ | --------------------------------------------------------------- |
-| `400`  | “Dados inválidos” e, quando disponíveis, os detalhes por campo. |
-| `404`  | “Não encontrado” com a mensagem enviada pelo backend.           |
-| `409`  | “Conflito”, especialmente para exclusões com dados vinculados.  |
-| `500`  | “Erro do servidor” com a orientação retornada pela API.         |
-
-Falhas locais de JSON na fórmula de uma atribuição também são detectadas antes do envio.
-
-## Consulta acadêmica
-
-A aba **Consultar dados** carrega as opções com `GET /api/professores`, envia notas para `POST /api/avaliar` e exibe P3 ou exame final apenas quando a resposta indicar `precisaP3` ou `precisaExame`. O catálogo de atribuições usa `GET /api/atribuicoes`.
+| Arquivo                          | Responsabilidade                                                   |
+| -------------------------------- | ------------------------------------------------------------------ |
+| `app/page.tsx`                   | Shell, navegação pública/administrativa e ciclo de vida da sessão. |
+| `components/AuthScreen.tsx`      | Login, registro e feedback de autenticação.                        |
+| `components/ConsultationTab.tsx` | Consulta pública de atribuições e avaliação de notas.              |
+| `components/CreationTab.tsx`     | CRUD administrativo protegido.                                     |
+| `components/ui.tsx`              | Campos, métricas e feedbacks reutilizáveis.                        |
+| `lib/api.ts`                     | Tipos, autenticação JWT, sessão local e chamadas HTTP.             |
 
 ## Executar localmente
 
@@ -63,8 +58,6 @@ pnpm dev
 ```
 
 A aplicação abre em `http://localhost:3000`. Por padrão, o cliente procura a API em `http://localhost:8080`.
-
-## Variáveis de ambiente
 
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:8080
@@ -77,4 +70,4 @@ pnpm typecheck
 pnpm build
 ```
 
-O cliente espera que o backend esteja executando uma versão com os contratos CRUD e `GlobalExceptionHandler` descritos no README mais recente da branch `feature/Add-Data`. Nenhum arquivo ou alteração é feito no repositório do backend por este projeto.
+O frontend espera o backend na versão equivalente à branch `feature/Auth`, com `/api/auth/**`, Spring Security, JWT e os contratos CRUD protegidos. Nenhum arquivo ou alteração foi feito no repositório `NotasALP` durante esta implementação.

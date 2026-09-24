@@ -4,7 +4,6 @@ export type Professor = {
   nomeMateria: string;
   rotulosNotasIniciais: string[];
 };
-
 export type Curso = { id: number; nome: string; sigla: string };
 export type ProfessorCadastrado = { id: number; nome: string; email: string };
 export type Semestre = { id: number; ordem: number; nomeCurso: string };
@@ -36,11 +35,16 @@ export type EvaluationResult = {
   notaNecessariaProximaProva?: number | null;
   proximaProvaLabel?: string | null;
 };
+export type AuthSession = {
+  token: string;
+  tipo: string;
+  email: string;
+  nome: string;
+};
 
 export class ApiError extends Error {
   status: number;
   details: string[];
-
   constructor(message: string, status: number, details: string[] = []) {
     super(message);
     this.name = "ApiError";
@@ -52,50 +56,93 @@ export class ApiError extends Error {
 const API_URL = (
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080"
 ).replace(/\/$/, "");
+const SESSION_KEY = "notasalp.auth.session";
+
+export function getSession(): AuthSession | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const stored = window.localStorage.getItem(SESSION_KEY);
+    return stored ? (JSON.parse(stored) as AuthSession) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function saveSession(session: AuthSession) {
+  window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  window.dispatchEvent(new Event("auth:changed"));
+}
+
+export function clearSession() {
+  if (typeof window !== "undefined") {
+    window.localStorage.removeItem(SESSION_KEY);
+    window.dispatchEvent(new Event("auth:changed"));
+  }
+}
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const session = getSession();
+  const headers = new Headers(init?.headers);
+  headers.set("Content-Type", "application/json");
+  if (session?.token)
+    headers.set(
+      "Authorization",
+      `${session.tipo || "Bearer"} ${session.token}`,
+    );
+
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(init?.headers ?? {}),
-    },
+    headers,
     cache: "no-store",
   });
-
   if (!response.ok) {
     let message = `Não foi possível concluir a operação (${response.status}).`;
     let details: string[] = [];
-
     try {
       const body = await response.json();
       message = body.mensagem || message;
       details = Array.isArray(body.detalhes) ? body.detalhes : [];
     } catch {
-      // Mantém a mensagem baseada no status quando não houver JSON.
+      // Mantém a mensagem baseada no status quando a resposta não tem JSON.
     }
-
+    if (response.status === 401 && !path.startsWith("/api/auth/")) {
+      clearSession();
+      if (typeof window !== "undefined")
+        window.dispatchEvent(new CustomEvent("auth:expired"));
+      message = "Sessão expirada. Faça login novamente.";
+    }
     throw new ApiError(message, response.status, details);
   }
-
   if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
 
+export const register = (payload: {
+  nome: string;
+  email: string;
+  senha: string;
+}) =>
+  request<AuthSession>("/api/auth/registrar", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+export const login = (payload: { email: string; senha: string }) =>
+  request<AuthSession>("/api/auth/login", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
 export const listProfessors = () => request<Professor[]>("/api/professores");
 export const evaluateNotes = (payload: EvaluationRequest) =>
   request<EvaluationResult>("/api/avaliar", {
     method: "POST",
     body: JSON.stringify(payload),
   });
-
 export const listCursos = () => request<Curso[]>("/api/cursos");
 export const listProfessoresCadastrados = () =>
   request<ProfessorCadastrado[]>("/api/professores-cadastrados");
 export const listSemestres = () => request<Semestre[]>("/api/semestres");
 export const listMaterias = () => request<Materia[]>("/api/materias");
 export const listAtribuicoes = () => request<Atribuicao[]>("/api/atribuicoes");
-
 export const createCurso = (payload: { nome: string; sigla: string }) =>
   request<Curso>("/api/admin/cursos", {
     method: "POST",
@@ -111,7 +158,6 @@ export const updateCurso = (
   });
 export const deleteCurso = (id: number) =>
   request<void>(`/api/admin/cursos/${id}`, { method: "DELETE" });
-
 export const createProfessor = (payload: { nome: string; email: string }) =>
   request<ProfessorCadastrado>("/api/admin/professores", {
     method: "POST",
@@ -127,7 +173,6 @@ export const updateProfessor = (
   });
 export const deleteProfessor = (id: number) =>
   request<void>(`/api/admin/professores/${id}`, { method: "DELETE" });
-
 export const createSemestre = (payload: { ordem: number; cursoId: number }) =>
   request<Semestre>("/api/admin/semestres", {
     method: "POST",
@@ -143,7 +188,6 @@ export const updateSemestre = (
   });
 export const deleteSemestre = (id: number) =>
   request<void>(`/api/admin/semestres/${id}`, { method: "DELETE" });
-
 export const createMateria = (payload: {
   nome: string;
   sigla: string;
@@ -163,7 +207,6 @@ export const updateMateria = (
   });
 export const deleteMateria = (id: number) =>
   request<void>(`/api/admin/materias/${id}`, { method: "DELETE" });
-
 export const createAtribuicao = (payload: {
   professorId: number;
   materiaId: number;
