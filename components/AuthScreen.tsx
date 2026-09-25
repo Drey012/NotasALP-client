@@ -94,7 +94,7 @@ export function AuthScreen({
             <p>
               {mode === "login"
                 ? "Use suas credenciais de administrador para continuar."
-                : "O cadastro cria um administrador e inicia sua sessão."}
+                : "O cadastro público está desativado por padrão; administradores devem ser provisionados pelo responsável do ambiente."}
             </p>
           </div>
           <div className="auth-tabs">

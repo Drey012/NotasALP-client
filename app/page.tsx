@@ -14,7 +14,7 @@ import { AuthScreen } from "@/components/AuthScreen";
 import { ConsultationTab } from "@/components/ConsultationTab";
 import { CreationTab } from "@/components/CreationTab";
 import { Metric } from "@/components/ui";
-import { clearSession, getSession, type AuthSession } from "@/lib/api";
+import { clearSession, getSession, logout, type AuthSession } from "@/lib/api";
 
 type MainTab = "consultation" | "creation";
 
@@ -45,9 +45,13 @@ export default function HomePage() {
     [],
   );
   const openAdmin = () => setActiveTab("creation");
-  const signOut = () => {
-    clearSession();
-    setActiveTab("consultation");
+  const signOut = async () => {
+    try {
+      await logout();
+    } finally {
+      clearSession();
+      setActiveTab("consultation");
+    }
   };
 
   if (!ready)

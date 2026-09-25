@@ -36,10 +36,9 @@ export type EvaluationResult = {
   proximaProvaLabel?: string | null;
 };
 export type AuthSession = {
-  token: string;
-  tipo: string;
   email: string;
   nome: string;
+  cargo: string;
 };
 
 export class ApiError extends Error {
@@ -61,7 +60,7 @@ const SESSION_KEY = "notasalp.auth.session";
 export function getSession(): AuthSession | null {
   if (typeof window === "undefined") return null;
   try {
-    const stored = window.localStorage.getItem(SESSION_KEY);
+    const stored = window.sessionStorage.getItem(SESSION_KEY);
     return stored ? (JSON.parse(stored) as AuthSession) : null;
   } catch {
     return null;
@@ -69,30 +68,38 @@ export function getSession(): AuthSession | null {
 }
 
 export function saveSession(session: AuthSession) {
-  window.localStorage.setItem(SESSION_KEY, JSON.stringify(session));
+  window.sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
   window.dispatchEvent(new Event("auth:changed"));
 }
 
 export function clearSession() {
   if (typeof window !== "undefined") {
+    window.sessionStorage.removeItem(SESSION_KEY);
     window.localStorage.removeItem(SESSION_KEY);
     window.dispatchEvent(new Event("auth:changed"));
   }
 }
 
+function csrfToken() {
+  if (typeof document === "undefined") return null;
+  return (
+    document.cookie
+      .split("; ")
+      .find((entry) => entry.startsWith("XSRF-TOKEN="))
+      ?.split("=")[1] ?? null
+  );
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
-  const session = getSession();
   const headers = new Headers(init?.headers);
   headers.set("Content-Type", "application/json");
-  if (session?.token)
-    headers.set(
-      "Authorization",
-      `${session.tipo || "Bearer"} ${session.token}`,
-    );
+  const csrf = csrfToken();
+  if (csrf) headers.set("X-XSRF-TOKEN", decodeURIComponent(csrf));
 
   const response = await fetch(`${API_URL}${path}`, {
     ...init,
     headers,
+    credentials: "include",
     cache: "no-store",
   });
   if (!response.ok) {
@@ -131,6 +138,8 @@ export const login = (payload: { email: string; senha: string }) =>
     method: "POST",
     body: JSON.stringify(payload),
   });
+export const logout = () =>
+  request<void>("/api/auth/logout", { method: "POST" });
 export const listProfessors = () => request<Professor[]>("/api/professores");
 export const evaluateNotes = (payload: EvaluationRequest) =>
   request<EvaluationResult>("/api/avaliar", {

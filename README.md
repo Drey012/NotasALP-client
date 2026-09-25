@@ -4,22 +4,22 @@ Cliente web em Next.js para a API REST do repositório [`Drey012/NotasALP`](http
 
 ## Fluxo de autenticação
 
-A área **Consultar dados** continua disponível sem login, pois o backend permite as rotas públicas de consulta e avaliação. A área **Área administrativa** abre a tela de autenticação quando não existe uma sessão local válida.
+A área **Consultar dados** continua disponível sem login, pois o backend permite as rotas públicas de consulta e avaliação. A área **Área administrativa** abre a tela de autenticação quando não existe uma sessão local válida. Usuários `CONSULTOR` autenticados não podem acessar o CRUD; somente `ADMIN` possui essa permissão.
 
 A tela de acesso possui dois fluxos:
 
-- **Registro:** envia `POST /api/auth/registrar` com `nome`, `email` e `senha` de pelo menos seis caracteres. O backend cria o administrador e retorna o token JWT.
+- **Registro:** envia `POST /api/auth/registrar` com `nome`, `email` e `senha` de pelo menos seis caracteres. O backend mantém o cadastro público desativado por padrão. Quando habilitado apenas para demonstração, o usuário recebe o papel `CONSULTOR`, nunca `ADMIN`.
 - **Login:** envia `POST /api/auth/login` com `email` e `senha`.
 
-Ambos os endpoints retornam `token`, `tipo`, `email` e `nome`. Após sucesso, a sessão é salva no `localStorage` sob a chave `notasalp.auth.session` e o usuário entra diretamente na área administrativa.
+Os endpoints retornam apenas `email`, `nome` e `cargo`; o JWT é emitido pelo backend em cookie `HttpOnly`, `SameSite=Lax` e configurável como `Secure`. O frontend mantém somente os dados visuais da sessão em `sessionStorage`, sem armazenar o token.
 
 ## Sessão e autorização
 
-`lib/api.ts` injeta automaticamente `Authorization: Bearer <token>` nas requisições quando existe uma sessão. Isso permite que as operações administrativas de CRUD funcionem sem que cada componente precise lidar diretamente com o cabeçalho.
+`lib/api.ts` envia requisições com `credentials: include`, lê o cookie CSRF não sensível e envia `X-XSRF-TOKEN` nas mutações. O JWT nunca é lido pelo JavaScript. O backend aplica o cookie de sessão nas operações administrativas.
 
-Quando uma requisição protegida retorna `401`, o cliente remove a sessão, notifica o shell da aplicação e retorna o usuário à aba pública de consulta com a mensagem **“Sessão expirada. Faça login novamente.”** O logout manual remove o token e os dados da sessão do navegador.
+Quando uma requisição protegida retorna `401`, o cliente remove a sessão, notifica o shell da aplicação e retorna o usuário à aba pública de consulta com a mensagem **“Sessão expirada. Faça login novamente.”** O logout manual chama `POST /api/auth/logout` para expirar o cookie e remove os dados visuais da sessão do navegador.
 
-A sessão é armazenada apenas no navegador atual. O frontend não tenta interpretar o conteúdo do JWT; a validade do token permanece responsabilidade do filtro JWT e do Spring Security.
+A sessão é válida por até oito horas e é armazenada em cookie HttpOnly. A flag `Secure` deve ser ativada em HTTPS via `AUTH_COOKIE_SECURE=true`. A validade do JWT permanece responsabilidade do filtro JWT e do Spring Security.
 
 ## Contratos consumidos
 
