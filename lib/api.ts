@@ -90,7 +90,14 @@ function csrfToken() {
   );
 }
 
+async function ensureCsrf(path: string, method: string) {
+  if (method === "GET" || path.startsWith("/api/auth/") || path === "/api/avaliar" || csrfToken()) return;
+  await fetch(`${API_URL}/api/auth/csrf`, { credentials: "include", cache: "no-store" });
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  const method = (init?.method ?? "GET").toUpperCase();
+  await ensureCsrf(path, method);
   const headers = new Headers(init?.headers);
   headers.set("Content-Type", "application/json");
   const csrf = csrfToken();
